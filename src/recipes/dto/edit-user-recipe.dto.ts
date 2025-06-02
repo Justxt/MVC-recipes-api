@@ -22,9 +22,6 @@ export class IngredientSubstitutionDto {
 }
 
 export class EditUserRecipeDto {
-  @IsUUID()
-  recipeId: string;
-
   @IsOptional()
   @IsString()
   customTitle?: string;
@@ -39,4 +36,4 @@ export class EditUserRecipeDto {
   @IsString({ each: true })
   @IsOptional()
   modifiedSteps?: string[];
-} 
+}

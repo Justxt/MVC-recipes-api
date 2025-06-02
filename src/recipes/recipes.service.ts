@@ -30,7 +30,7 @@ interface SuggestedRecipeInfo extends Recipe {
   availableUserIngredientsUsed?: string[];
 }
 
-const MINIMUM_INGREDIENT_MATCH_PERCENTAGE = 0.75;
+const MINIMUM_INGREDIENT_MATCH_PERCENTAGE = 0.5; // Bajamos a 50% para ser más flexible
 
 @Injectable()
 export class RecipesService {
@@ -245,7 +245,6 @@ export class RecipesService {
     await this.recipeRepository.remove(recipe);
     this.logger.log(`Recipe with ID: ${id} removed successfully.`);
   }
-
   async suggestRecipesByInventoryDetailed(
     userId: string,
     suggestDto: SuggestRecipesDto,
@@ -286,12 +285,16 @@ export class RecipesService {
 
     const suggestedRecipesDetailed: SuggestedRecipeDto[] = [];
 
+    // Definir ingredientes básicos que no son críticos para el match
+    const basicIngredients = ['sal', 'pimienta negra', 'aceite de oliva', 'agua', 'aceite'];
+
     for (const recipe of allRecipes) {
       if (!recipe.recipeIngredients || recipe.recipeIngredients.length === 0) {
         continue;
       }
 
       let matchedIngredientCount = 0;
+      let criticalIngredientCount = 0; // Ingredientes no básicos
       const recipeTotalIngredients = recipe.recipeIngredients.length;
       const missingIngredients: {
         name: string;
@@ -301,10 +304,17 @@ export class RecipesService {
       const availableUserIngredientsUsed: string[] = [];
 
       for (const ri of recipe.recipeIngredients) {
-        if (
-          ri.ingredient &&
-          availableIngredientIds.includes(ri.ingredient.id)
-        ) {
+        if (!ri.ingredient) continue;
+
+        const isBasicIngredient = basicIngredients.some(basic => 
+          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
+        );
+
+        if (!isBasicIngredient) {
+          criticalIngredientCount++;
+        }
+
+        if (availableIngredientIds.includes(ri.ingredient.id)) {
           matchedIngredientCount++;
           if (ri.ingredient.name) {
             availableUserIngredientsUsed.push(ri.ingredient.name);
@@ -318,19 +328,50 @@ export class RecipesService {
         }
       }
 
-      if (matchedIngredientCount === 0 && recipeTotalIngredients > 0) {
+      // Si no se encontró ningún ingrediente, saltar
+      if (matchedIngredientCount === 0) {
         continue;
       }
 
-      const matchPercentage =
-        recipeTotalIngredients > 0
-          ? matchedIngredientCount / recipeTotalIngredients
-          : 0;
+      // Calcular porcentaje considerando ingredientes críticos
+      let matchPercentage: number;
+      if (criticalIngredientCount > 0) {
+        // Contar cuántos ingredientes críticos tenemos
+        let criticalMatched = 0;
+        for (const ri of recipe.recipeIngredients) {
+          if (!ri.ingredient) continue;
+          
+          const isBasicIngredient = basicIngredients.some(basic => 
+            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
+          );
+          
+          if (!isBasicIngredient && availableIngredientIds.includes(ri.ingredient.id)) {
+            criticalMatched++;
+          }
+        }
+        
+        // Dar más peso a los ingredientes críticos
+        const criticalPercentage = criticalMatched / criticalIngredientCount;
+        const overallPercentage = matchedIngredientCount / recipeTotalIngredients;
+        
+        // Promedio ponderado: 70% críticos, 30% general
+        matchPercentage = (criticalPercentage * 0.7) + (overallPercentage * 0.3);
+      } else {
+        matchPercentage = matchedIngredientCount / recipeTotalIngredients;
+      }
 
-      if (
-        matchPercentage < MINIMUM_INGREDIENT_MATCH_PERCENTAGE &&
-        recipeTotalIngredients > 0
-      ) {
+      // Relajar el filtro: aceptar recetas con al menos 1 ingrediente crítico o 50% total
+      const hasAtLeastOneCriticalIngredient = recipe.recipeIngredients.some(ri => {
+        if (!ri.ingredient) return false;
+        
+        const isBasicIngredient = basicIngredients.some(basic => 
+          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
+        );
+        
+        return !isBasicIngredient && availableIngredientIds.includes(ri.ingredient.id);
+      });
+
+      if (!hasAtLeastOneCriticalIngredient && matchPercentage < MINIMUM_INGREDIENT_MATCH_PERCENTAGE) {
         continue;
       }
 
@@ -352,31 +393,32 @@ export class RecipesService {
         continue;
       }
 
-      // Verificar herramientas
-      let hasAllTools = true;
+      // Verificar herramientas (más flexible - no requerimos todas)
+      let toolPenalty = 0;
       if (recipe.requiredTools && recipe.requiredTools.length > 0) {
-        for (const requiredTool of recipe.requiredTools) {
-          if (!userOwnedToolIds.includes(requiredTool.id)) {
-            hasAllTools = false;
-            break;
-          }
-        }
+        const missingTools = recipe.requiredTools.filter(
+          tool => !userOwnedToolIds.includes(tool.id)
+        );
+        toolPenalty = missingTools.length * 0.1; // Pequeña penalización por herramienta faltante
       }
-      if (!hasAllTools) {
-        continue;
-      }
+
+      const finalMatchPercentage = Math.max(0, matchPercentage - toolPenalty);
 
       suggestedRecipesDetailed.push({
         recipe,
-        matchPercentage: parseFloat(matchPercentage.toFixed(2)),
+        matchPercentage: parseFloat(finalMatchPercentage.toFixed(2)),
         missingIngredients,
         availableUserIngredientsUsed,
       });
     }
 
-    suggestedRecipesDetailed.sort(
-      (a, b) => b.matchPercentage - a.matchPercentage,
-    );
+    // Ordenar por porcentaje de coincidencia y luego por menos ingredientes faltantes
+    suggestedRecipesDetailed.sort((a, b) => {
+      if (b.matchPercentage !== a.matchPercentage) {
+        return b.matchPercentage - a.matchPercentage;
+      }
+      return a.missingIngredients.length - b.missingIngredients.length;
+    });
 
     this.logger.log(
       `Found ${suggestedRecipesDetailed.length} detailed recipe suggestions for user ID: ${userId}.`,
@@ -420,9 +462,10 @@ export class RecipesService {
 
   async createUserEditedRecipe(
     userId: string,
+    recipeId: string, // Added recipeId as a parameter
     editRecipeDto: EditUserRecipeDto,
   ): Promise<Recipe> {
-    this.logger.log(`User ${userId} editing recipe ${editRecipeDto.recipeId}`);
+    this.logger.log(`User ${userId} editing recipe ${recipeId}`); // Use recipeId from parameter
 
     // Verificar que el usuario existe
     const user = await this.userRepository.findOneBy({ id: userId });
@@ -430,7 +473,7 @@ export class RecipesService {
       throw new NotFoundException(`Usuario con ID "${userId}" no encontrado.`);
     }
 
-    const originalRecipe = await this.findOne(editRecipeDto.recipeId);
+    const originalRecipe = await this.findOne(recipeId); // Use recipeId from parameter
 
     // Crear una nueva receta basada en la original
     const editedRecipe = this.recipeRepository.create({
