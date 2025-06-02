@@ -49,23 +49,6 @@ Una app que permite crear recetas personalizadas de acuerdo a los ingredientes q
    -*Personalizar* → Sustituir ingredientes y adaptar pasos
 6. *Cocinar y calificar* → Dejar feedback para mejorar el sistema
 
-
-**Configurar variables de entorno**:
-   # Base de datos
-   DATABASE_HOST=localhost
-   DATABASE_PORT=5432
-   DATABASE_USERNAME=postgres
-   DATABASE_PASSWORD=tu_password
-   DATABASE_NAME=recipes_db
-   
-   # JWT
-   JWT_SECRET=tu_jwt_secret_muy_seguro
-   JWT_EXPIRES_IN=24h
-   
-   # Puerto de la aplicación
-   PORT=3000
-
-
 ## Muestra trabajo con JIRA
 ![image](https://github.com/user-attachments/assets/1307c8a1-436b-402c-afc1-3c2f680658ed)
 
