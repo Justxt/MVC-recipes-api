@@ -66,7 +66,8 @@ Una app que permite crear recetas personalizadas de acuerdo a los ingredientes q
    PORT=3000
 
 
-**Muestra trabajo con JIRA**
+## Muestra trabajo con JIRA
+![image](https://github.com/user-attachments/assets/1307c8a1-436b-402c-afc1-3c2f680658ed)
 
 
-**Link demostracion en YT**
+## Link demostracion en YT
