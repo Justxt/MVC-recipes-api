@@ -5,6 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Recipe } from './recipe.entity';
 import { Ingredient } from '../../ingredients/entities/ingredient.entity';
 
@@ -26,6 +27,7 @@ export class RecipeIngredient {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'recipe_id' })
+  @Exclude() // Evita la referencia circular al serializar
   recipe: Recipe;
 
   @ManyToOne(() => Ingredient, (ingredient) => ingredient.recipeIngredients, {

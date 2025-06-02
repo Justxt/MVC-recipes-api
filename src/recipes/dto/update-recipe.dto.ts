@@ -1,23 +1,21 @@
 import {
   IsString,
-  IsNotEmpty,
   IsOptional,
   IsArray,
   ValidateNested,
   IsInt,
   Min,
-  ArrayNotEmpty,
   MinLength,
   IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateRecipeIngredientDto } from './create-recipe-ingredient.dto';
 
-export class CreateRecipeDto {
+export class UpdateRecipeDto {
   @IsString({ message: 'El título debe ser un texto.' })
-  @IsNotEmpty({ message: 'El título no puede estar vacío.' })
   @MinLength(3, { message: 'El título debe tener al menos 3 caracteres.' })
-  title: string;
+  @IsOptional()
+  title?: string;
 
   @IsString({ message: 'La descripción debe ser un texto.' })
   @IsOptional()
@@ -38,24 +36,16 @@ export class CreateRecipeDto {
   @IsOptional()
   servings?: number;
 
-  @IsArray({ message: 'Los pasos deben ser un arreglo de strings.' })
-  @ArrayNotEmpty({ message: 'La receta debe tener al menos un paso.' })
-  @IsString({ each: true, message: 'Cada paso debe ser un texto.' })
-  @IsNotEmpty({ each: true, message: 'Los pasos no pueden estar vacíos.' })
-  steps: string[];
-
   @IsArray({ message: 'Los ingredientes de la receta deben ser un arreglo.' })
-  @ArrayNotEmpty({ message: 'La receta debe tener al menos un ingrediente.' })
   @ValidateNested({
     each: true,
     message: 'Cada ingrediente de la receta debe ser válido.',
   })
   @Type(() => CreateRecipeIngredientDto)
-  recipeIngredients: CreateRecipeIngredientDto[];
+  @IsOptional()
+  recipeIngredients?: CreateRecipeIngredientDto[];
 
-  @IsArray({
-    message: 'Las herramientas requeridas deben ser un arreglo de IDs.',
-  })
+  @IsArray({ message: 'Las herramientas deben ser un arreglo de IDs.' })
   @IsUUID('4', {
     each: true,
     message: 'Cada ID de herramienta debe ser un UUID válido.',

@@ -1,5 +1,13 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { RecipeIngredient } from './recipe-ingredient.entity';
+import { Tool } from 'src/tools/entities/tool.entity';
 
 @Entity('recipes')
 export class Recipe {
@@ -12,6 +20,23 @@ export class Recipe {
   @Column()
   description: string;
 
+  @Column({ name: 'preparation_time_minutes' })
+  preparationTimeMinutes: number;
+
+  @Column({ name: 'cooking_time_minutes' })
+  cookingTimeMinutes: number;
+
+  @Column()
+  servings: number;
+
+  @Column({
+    type: 'text',
+    array: true,
+    nullable: false,
+    comment: 'Step-by-step preparation instructions',
+  })
+  steps: string[];
+
   @OneToMany(
     () => RecipeIngredient,
     (recipeIngredient) => recipeIngredient.recipe,
@@ -21,4 +46,14 @@ export class Recipe {
     },
   )
   recipeIngredients: RecipeIngredient[];
+
+  @ManyToMany(() => Tool, (tool) => tool.recipes, {
+    cascade: ['insert', 'update'],
+  }) // 'recipes' será la propiedad en Tool
+  @JoinTable({
+    name: 'recipe_required_tools',
+    joinColumn: { name: 'recipe_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tool_id', referencedColumnName: 'id' },
+  })
+  requiredTools: Tool[];
 }

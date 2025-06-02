@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IngredientsModule } from './ingredients/ingredients.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { SeedModule } from './seed/seed.module';
+import { AuthModule } from './auth/auth.module';
+import { ToolsModule } from './tools/tools.module';
 
 @Module({
   imports: [
@@ -25,8 +28,11 @@ import { RecipesModule } from './recipes/recipes.module';
       }),
       inject: [ConfigService],
     }),
-    RecipesModule,
     IngredientsModule,
+    RecipesModule,
+    SeedModule,
+    ToolsModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
