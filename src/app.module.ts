@@ -6,6 +6,7 @@ import { RecipesModule } from './recipes/recipes.module';
 import { SeedModule } from './seed/seed.module';
 import { AuthModule } from './auth/auth.module';
 import { ToolsModule } from './tools/tools.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ToolsModule } from './tools/tools.module';
     SeedModule,
     ToolsModule,
     AuthModule,
+    FeedbackModule,
   ],
   controllers: [],
   providers: [],
