@@ -286,7 +286,13 @@ export class RecipesService {
     const suggestedRecipesDetailed: SuggestedRecipeDto[] = [];
 
     // Definir ingredientes básicos que no son críticos para el match
-    const basicIngredients = ['sal', 'pimienta negra', 'aceite de oliva', 'agua', 'aceite'];
+    const basicIngredients = [
+      'sal',
+      'pimienta negra',
+      'aceite de oliva',
+      'agua',
+      'aceite',
+    ];
 
     for (const recipe of allRecipes) {
       if (!recipe.recipeIngredients || recipe.recipeIngredients.length === 0) {
@@ -306,8 +312,8 @@ export class RecipesService {
       for (const ri of recipe.recipeIngredients) {
         if (!ri.ingredient) continue;
 
-        const isBasicIngredient = basicIngredients.some(basic => 
-          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
+        const isBasicIngredient = basicIngredients.some((basic) =>
+          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
         );
 
         if (!isBasicIngredient) {
@@ -340,38 +346,50 @@ export class RecipesService {
         let criticalMatched = 0;
         for (const ri of recipe.recipeIngredients) {
           if (!ri.ingredient) continue;
-          
-          const isBasicIngredient = basicIngredients.some(basic => 
-            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
+
+          const isBasicIngredient = basicIngredients.some((basic) =>
+            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
           );
-          
-          if (!isBasicIngredient && availableIngredientIds.includes(ri.ingredient.id)) {
+
+          if (
+            !isBasicIngredient &&
+            availableIngredientIds.includes(ri.ingredient.id)
+          ) {
             criticalMatched++;
           }
         }
-        
+
         // Dar más peso a los ingredientes críticos
         const criticalPercentage = criticalMatched / criticalIngredientCount;
-        const overallPercentage = matchedIngredientCount / recipeTotalIngredients;
-        
+        const overallPercentage =
+          matchedIngredientCount / recipeTotalIngredients;
+
         // Promedio ponderado: 70% críticos, 30% general
-        matchPercentage = (criticalPercentage * 0.7) + (overallPercentage * 0.3);
+        matchPercentage = criticalPercentage * 0.7 + overallPercentage * 0.3;
       } else {
         matchPercentage = matchedIngredientCount / recipeTotalIngredients;
       }
 
       // Relajar el filtro: aceptar recetas con al menos 1 ingrediente crítico o 50% total
-      const hasAtLeastOneCriticalIngredient = recipe.recipeIngredients.some(ri => {
-        if (!ri.ingredient) return false;
-        
-        const isBasicIngredient = basicIngredients.some(basic => 
-          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase())
-        );
-        
-        return !isBasicIngredient && availableIngredientIds.includes(ri.ingredient.id);
-      });
+      const hasAtLeastOneCriticalIngredient = recipe.recipeIngredients.some(
+        (ri) => {
+          if (!ri.ingredient) return false;
 
-      if (!hasAtLeastOneCriticalIngredient && matchPercentage < MINIMUM_INGREDIENT_MATCH_PERCENTAGE) {
+          const isBasicIngredient = basicIngredients.some((basic) =>
+            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
+          );
+
+          return (
+            !isBasicIngredient &&
+            availableIngredientIds.includes(ri.ingredient.id)
+          );
+        },
+      );
+
+      if (
+        !hasAtLeastOneCriticalIngredient &&
+        matchPercentage < MINIMUM_INGREDIENT_MATCH_PERCENTAGE
+      ) {
         continue;
       }
 
@@ -397,7 +415,7 @@ export class RecipesService {
       let toolPenalty = 0;
       if (recipe.requiredTools && recipe.requiredTools.length > 0) {
         const missingTools = recipe.requiredTools.filter(
-          tool => !userOwnedToolIds.includes(tool.id)
+          (tool) => !userOwnedToolIds.includes(tool.id),
         );
         toolPenalty = missingTools.length * 0.1; // Pequeña penalización por herramienta faltante
       }
@@ -412,12 +430,11 @@ export class RecipesService {
       });
     }
 
+
     // Ordenar por porcentaje de coincidencia y luego por menos ingredientes faltantes
     suggestedRecipesDetailed.sort((a, b) => {
-      if (b.matchPercentage !== a.matchPercentage) {
-        return b.matchPercentage - a.matchPercentage;
-      }
-      return a.missingIngredients.length - b.missingIngredients.length;
+      // Ordenar por tiempo de preparación de menor a mayor
+      return a.recipe.preparationTimeMinutes - b.recipe.preparationTimeMinutes;
     });
 
     this.logger.log(

@@ -13,24 +13,20 @@ import {
   Logger,
 } from '@nestjs/common';
 import { RecipesService } from './recipes.service';
-// import { FeedbackService } from './feedback.service'; // Removed
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { Recipe } from './entities/recipe.entity';
 import { SuggestRecipesDto } from './dto/suggest-recipes.dto';
 import { SuggestRecipesResponseDto } from './dto/suggested-recipe.dto';
 import { EditUserRecipeDto } from './dto/edit-user-recipe.dto';
-// import { CreateFeedbackDto } from './dto/create-feedback.dto'; // Removed
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
-// import { RecipeFeedback } from './entities/recipe-feedback.entity'; // Removed
 
 @Controller('recipes')
 export class RecipesController {
   private readonly logger = new Logger(RecipesController.name);
 
-  constructor(
-    private readonly recipesService: RecipesService, // Removed feedbackService from constructor
-  ) {}  @Post()
+  constructor(private readonly recipesService: RecipesService) {}
+  @Post()
   @HttpCode(201)
   async createRecipe(
     @Body() createRecipeDto: CreateRecipeDto,
@@ -74,7 +70,9 @@ export class RecipesController {
     const userId = req.user.id;
 
     if (!userId) {
-      this.logger.error('User not authenticated properly for recipe suggestions');
+      this.logger.error(
+        'User not authenticated properly for recipe suggestions',
+      );
       throw new Error(
         'Usuario no autenticado correctamente para obtener sugerencias.',
       );
@@ -96,7 +94,9 @@ export class RecipesController {
     const userId = req.user.id;
 
     if (!userId) {
-      this.logger.error('User not authenticated properly for detailed recipe suggestions');
+      this.logger.error(
+        'User not authenticated properly for detailed recipe suggestions',
+      );
       throw new Error(
         'Usuario no autenticado correctamente para obtener sugerencias.',
       );
@@ -112,7 +112,7 @@ export class RecipesController {
   @UseGuards(JwtAuthGuard)
   @HttpCode(201)
   async createUserEditedRecipe(
-    @Param('recipeId', ParseUUIDPipe) recipeId: string, // Added recipeId as a parameter
+    @Param('recipeId', ParseUUIDPipe) recipeId: string,
     @Req() req,
     @Body() editRecipeDto: EditUserRecipeDto,
   ): Promise<Recipe> {
@@ -123,12 +123,14 @@ export class RecipesController {
       throw new Error('Usuario no autenticado correctamente.');
     }
 
-    this.logger.log(`Creating edited recipe for user ${userId}, base recipe ${recipeId}`);
+    this.logger.log(
+      `Creating edited recipe for user ${userId}, base recipe ${recipeId}`,
+    );
     return this.recipesService.createUserEditedRecipe(
       userId,
       recipeId,
       editRecipeDto,
-    ); // Pass recipeId to service
+    );
   }
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
@@ -158,13 +160,17 @@ export class RecipesController {
     const userId = req.user.id;
 
     if (!userId) {
-      this.logger.error('User not authenticated properly for inventory-based suggestions');
+      this.logger.error(
+        'User not authenticated properly for inventory-based suggestions',
+      );
       throw new Error(
         'Usuario no autenticado correctamente para obtener sugerencias.',
       );
     }
 
-    this.logger.log(`Getting recipe suggestions based on user ${userId} inventory`);
+    this.logger.log(
+      `Getting recipe suggestions based on user ${userId} inventory`,
+    );
     return this.recipesService.suggestRecipesByUserInventory(userId);
   }
   @Post('suggest-by-my-inventory-detailed')
@@ -176,13 +182,17 @@ export class RecipesController {
     const userId = req.user.id;
 
     if (!userId) {
-      this.logger.error('User not authenticated properly for detailed inventory-based suggestions');
+      this.logger.error(
+        'User not authenticated properly for detailed inventory-based suggestions',
+      );
       throw new Error(
         'Usuario no autenticado correctamente para obtener sugerencias.',
       );
     }
 
-    this.logger.log(`Getting detailed recipe suggestions based on user ${userId} inventory`);
+    this.logger.log(
+      `Getting detailed recipe suggestions based on user ${userId} inventory`,
+    );
     return this.recipesService.suggestRecipesByUserInventoryDetailed(userId);
   }
 }

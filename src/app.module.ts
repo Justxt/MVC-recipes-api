@@ -18,14 +18,13 @@ import { FeedbackModule } from './feedback/feedback.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('HOST') || 'localhost',
-        port: parseInt(configService.get<string>('PORTDB') || '5432'),
-        username: configService.get<string>('USER'),
-        password: configService.get<string>('PASS'),
-        database: configService.get<string>('DB_NAME'),
+        url: configService.get<string>('DATABASE_URL'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
+        ssl: {
+          rejectUnauthorized: false,
+        },
       }),
       inject: [ConfigService],
     }),

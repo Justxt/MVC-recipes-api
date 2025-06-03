@@ -17,7 +17,13 @@ async function bootstrap() {
   // Agregar el ClassSerializerInterceptor para manejar @Exclude()
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
+
+  app.enableCors({
+    origin: ['http://localhost:5173', 'https://frontend-url.vercel.app'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 }
+
 bootstrap();

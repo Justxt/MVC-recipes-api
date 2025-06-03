@@ -20,11 +20,11 @@ export class SeedService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    this.logger.log('🚀 Iniciando seed profesional de recetas...');
+    this.logger.log('Iniciando seed profesional de recetas...');
     await this.seedIngredients();
     await this.seedTools();
     await this.seedRecipes();
-    this.logger.log('✅ Seed completado con éxito');
+    this.logger.log('Seed completado con éxito');
   }
 
   private async seedIngredients() {
@@ -346,10 +346,10 @@ export class SeedService implements OnApplicationBootstrap {
         ingredientsToSeed.map((data) => this.ingredientRepository.create(data)),
       );
       this.logger.log(
-        `✅ ${ingredientsToSeed.length} ingredientes profesionales creados exitosamente.`,
+        `${ingredientsToSeed.length} ingredientes profesionales creados exitosamente.`,
       );
     } catch (error) {
-      this.logger.error('❌ Error seeding ingredients:', error);
+      this.logger.error('Error seeding ingredients:', error);
     }
   }
 
@@ -439,9 +439,9 @@ export class SeedService implements OnApplicationBootstrap {
       await this.toolRepository.save(
         toolsToSeed.map((data) => this.toolRepository.create(data)),
       );
-      this.logger.log(`✅ ${toolsToSeed.length} herramientas profesionales creadas exitosamente.`);
+      this.logger.log(`${toolsToSeed.length} herramientas profesionales creadas exitosamente.`);
     } catch (error) {
-      this.logger.error('❌ Error seeding tools:', error);
+      this.logger.error('Error seeding tools:', error);
     }
   }
 
@@ -834,9 +834,9 @@ export class SeedService implements OnApplicationBootstrap {
 
       try {
         await this.recipeRepository.save(newRecipe);
-        this.logger.log(`✅ Receta "${newRecipe.title}" creada exitosamente`);
+        this.logger.log(`Receta "${newRecipe.title}" creada exitosamente`);
       } catch (error) {
-        this.logger.error(`❌ Error creando receta "${newRecipe.title}":`, error);
+        this.logger.error(`Error creando receta "${newRecipe.title}":`, error);
       }
     }
 
