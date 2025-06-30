@@ -20,7 +20,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'https://frontend-url.vercel.app'],
+    origin: ['http://localhost:5173', 'https://recipes-xi-lake.vercel.app'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
