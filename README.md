@@ -1,79 +1,106 @@
 # Aplicación de Recetas API con NestJS
+## De que es este proyecto?
+Una app que permite crear recetas personalizadas de acuerdo a los ingredientes que posea el usuario
 
 ## PRINCIPIOS Y PATRONES APLICADOS
+### Link demostracion en YT
+https://youtu.be/1Gl_y6ByAwI
 
 ### Principio SRP - Single Responsibility Principle
 
 - Se dividio el UsersService en servicios especializados como user-inventoy.service y user-profile.service cada uno con su propia responsabilidad sin tener todo en un mismo servicio como era en el 'user.service'
 
-- Antes:
-class UsersService {
-  create()
-  updateProfile()
-  addIngredient()
+- Antes:<br>
+class UsersService { <br>
+  create()<br>
+  updateProfile()<br>
+  addIngredient()<br>
 }
 
-- Ahora:
-class UserProfileService {
-  create()
-  updateProfile()
+- Ahora:<br>
+class UserProfileService {<br>
+  create()<br>
+  updateProfile()<br>
 }
 
-class UserInventoryService {
-  addIngredient()
-  removeIngredient()
+class UserInventoryService {<br>
+  addIngredient()<br>
+  removeIngredient()<br>
 }
 
 ### Principio SRP - Dependency Inversion Principle
 
 - Integré  interfaces (puertos out) que definen contratos, entonces ahora los servicios dependen de abstracciones, no de implementaciones concretas.
 
-- Antes:
-class UserProfileService {
-  constructor(
-    @InjectRepository(User) private userRepo: Repository<User>
-  ) {}
+- Antes:<br>
+class UserProfileService {<br>
+  constructor(<br>
+    @InjectRepository(User) private userRepo: Repository<User><br>
+  ) {}<br>
 }
 
-- Ahora:
-class UserProfileService {
-  constructor(
-    @Inject('UserRepositoryPort') private userRepo: UserRepositoryPort
-  ) {}
+- Ahora:<br>
+class UserProfileService {<br>
+  constructor(<br>
+    @Inject('UserRepositoryPort') private userRepo: UserRepositoryPort<br>
+  ) {}<br>
 }
 
 ### Patrón Strategy
 
 Se extrajo logica de sugerencias de recetas a estrategias intercambiables, entonces creé un contexto que gestiona las diferentes strategies.
 
-- Antes:
-class RecipesService {
-  suggestRecipes() {
-  }
+- Antes:<br>
+class RecipesService {<br>
+  suggestRecipes() {<br>
+  }<br>
 }
 
-- Ahora:
-interface RecipeSuggestionStrategy {
-  execute(userId: string): Promise<SuggestRecipesResponseDto>;
+- Ahora:<br>
+interface RecipeSuggestionStrategy {<br>
+  execute(userId: string): Promise<SuggestRecipesResponseDto>;<br>
 }
 
-class InventoryMatchStrategy implements RecipeSuggestionStrategy {
-  execute(userId: string)
+class InventoryMatchStrategy implements RecipeSuggestionStrategy {<br>
+  execute(userId: string)<br>
 }
 
-class RecipeSuggestionContextService {
-  suggestByInventory(userId: string) {
-    return this.inventoryStrategy.execute(userId);
-  }
+class RecipeSuggestionContextService {<br>
+  suggestByInventory(userId: string) {<br>
+    return this.inventoryStrategy.execute(userId);<br>
+  }<br>
 }
 
 ### Patrón Builder
 
-Se creó un builder para construir recetas complejas paso a paso, ademas se encapsula la validación y creación en un objeto reutilizable
+Se creó un builder para construir recetas complejas paso a paso, ademas se encapsula la validación y se crea en un objeto reutilizable.
+Cambiando la lógica de creación repetitiva y compleja en RecipesService
 
-## De que es este proyecto?
+- Antes:<br>
+class RecipesService {<br>
+  async create(dto: CreateRecipeDto) {<br>
+    // Lógica de ingredientes<br>
+    // Lógica de herramientas<br>
+    // Validaciones en update()<br>
+  }<br>
+}
 
-Una app que permite crear recetas personalizadas de acuerdo a los ingredientes que posea el usuario
+- Ahora:<br>
+class RecipeBuilder {<br>
+  withBasicInfo(data)<br>
+  withSteps(steps)<br>
+  async addIngredients(ingredients)<br>
+  async addTools(tools)<br>
+  async build()<br>
+}
+
+const recipe = await this.recipeBuilder.createNew()<br>
+  .withBasicInfo(recipeDetails)<br>
+  .withSteps(steps)<br>
+  .addIngredients(ingredients)<br>
+  .addTools(tools)<br>
+  .build();<br>
+
 
 ## Rutas 
 
