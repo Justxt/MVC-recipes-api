@@ -19,6 +19,8 @@ import {
   SuggestRecipesResponseDto,
 } from './dto/suggested-recipe.dto';
 import { EditUserRecipeDto } from './dto/edit-user-recipe.dto';
+import { RecipeBuilder } from './builders/recipe.builder';
+import { RecipeSuggestionContextService } from './services/recipe-suggestion-context.service';
 
 interface SuggestRecipesDto {
   availableIngredientIds: string[];
@@ -29,8 +31,6 @@ interface SuggestedRecipeInfo extends Recipe {
   missingIngredients?: { name: string; quantity: string; unit: string }[];
   availableUserIngredientsUsed?: string[];
 }
-
-const MINIMUM_INGREDIENT_MATCH_PERCENTAGE = 0.5; // Bajamos a 50% para ser más flexible
 
 @Injectable()
 export class RecipesService {
@@ -49,6 +49,8 @@ export class RecipesService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserIngredient)
     private readonly userIngredientRepository: Repository<UserIngredient>,
+    private readonly recipeBuilder: RecipeBuilder,
+    private readonly recipeSuggestionContext: RecipeSuggestionContextService,
   ) {}
 
   async create(createRecipeDto: CreateRecipeDto): Promise<Recipe> {
@@ -59,63 +61,25 @@ export class RecipesService {
       ...recipeDetails
     } = createRecipeDto;
 
-    this.logger.log(`Creating new recipe: ${recipeDetails.title}`);
-    const recipe = this.recipeRepository.create({
-      ...recipeDetails,
-      steps,
-    });
-    recipe.recipeIngredients = [];
-    recipe.requiredTools = [];
-
-    if (recipeIngredientsDto && recipeIngredientsDto.length > 0) {
-      for (const riDto of recipeIngredientsDto) {
-        const ingredient = await this.ingredientRepository.findOneBy({
-          id: riDto.ingredientId,
-        });
-        if (!ingredient) {
-          this.logger.warn(
-            `Ingredient with ID "${riDto.ingredientId}" not found during recipe creation.`,
-          );
-          throw new BadRequestException(
-            `Ingrediente con ID "${riDto.ingredientId}" no encontrado.`,
-          );
-        }
-        const newRecipeIngredient = this.recipeIngredientRepository.create({
-          ingredient: ingredient,
-          quantity: riDto.quantity,
-          unit: riDto.unit,
-          notes: riDto.notes,
-        });
-        recipe.recipeIngredients.push(newRecipeIngredient);
-      }
-    }
-
-    if (requiredToolIds && requiredToolIds.length > 0) {
-      const tools = await this.toolRepository.findBy({
-        id: In(requiredToolIds),
-      });
-      if (tools.length !== requiredToolIds.length) {
-        this.logger.warn(
-          'One or more tool IDs not found during recipe creation.',
-        );
-        throw new BadRequestException(
-          'Uno o más IDs de herramientas proporcionados no son válidos.',
-        );
-      }
-      recipe.requiredTools = tools;
-    }
+    this.logger.log(`Creating new recipe using Builder pattern: ${recipeDetails.title}`);
 
     try {
-      const savedRecipe = await this.recipeRepository.save(recipe);
-      this.logger.log(
-        `Recipe "${savedRecipe.title}" (ID: ${savedRecipe.id}) created successfully.`,
-      );
-      return this.findOne(savedRecipe.id);
+      const builder = this.recipeBuilder.createNew();
+      
+      builder
+        .withBasicInfo(recipeDetails as any)
+        .withSteps(steps);
+      
+      await builder.addIngredients(recipeIngredientsDto || []);
+      await builder.addTools(requiredToolIds || []);
+      
+      const recipe = await builder.build();
+
+      this.logger.log(`Recipe "${recipe.title}" (ID: ${recipe.id}) created successfully using Builder.`);
+      return this.findOne(recipe.id);
     } catch (error) {
-      this.logger.error(`Error creating recipe: ${error.message}`, error.stack);
-      throw new BadRequestException(
-        `Error al crear la receta: ${error.message}`,
-      );
+      this.logger.error(`Error creating recipe with Builder: ${error.message}`, error.stack);
+      throw error;
     }
   }
 
@@ -250,202 +214,14 @@ export class RecipesService {
     suggestDto: SuggestRecipesDto,
   ): Promise<SuggestRecipesResponseDto> {
     this.logger.log(
-      `Suggesting detailed recipes for user ID: ${userId} with available ingredients: ${suggestDto.availableIngredientIds.join(', ')}`,
+      `Using Strategy pattern for detailed recipe suggestions - user ID: ${userId}`,
     );
-    const { availableIngredientIds } = suggestDto;
-
-    if (!availableIngredientIds || availableIngredientIds.length === 0) {
-      throw new BadRequestException(
-        'Debes proporcionar al menos un ingrediente disponible.',
-      );
-    }
-
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['ownedTools'],
-    });
-
-    if (!user) {
-      this.logger.warn(
-        `User with ID "${userId}" not found for recipe suggestion.`,
-      );
-      throw new NotFoundException(`Usuario con ID "${userId}" no encontrado.`);
-    }
-
-    const userDietaryRestrictions = user.dietary_restrictions || [];
-    const userOwnedToolIds = user.ownedTools?.map((tool) => tool.id) || [];
-
-    const allRecipes = await this.recipeRepository.find({
-      relations: [
-        'recipeIngredients',
-        'recipeIngredients.ingredient',
-        'requiredTools',
-      ],
-    });
-
-    const suggestedRecipesDetailed: SuggestedRecipeDto[] = [];
-
-    // Definir ingredientes básicos que no son críticos para el match
-    const basicIngredients = [
-      'sal',
-      'pimienta negra',
-      'aceite de oliva',
-      'agua',
-      'aceite',
-    ];
-
-    for (const recipe of allRecipes) {
-      if (!recipe.recipeIngredients || recipe.recipeIngredients.length === 0) {
-        continue;
-      }
-
-      let matchedIngredientCount = 0;
-      let criticalIngredientCount = 0; // Ingredientes no básicos
-      const recipeTotalIngredients = recipe.recipeIngredients.length;
-      const missingIngredients: {
-        name: string;
-        quantity: string;
-        unit: string;
-      }[] = [];
-      const availableUserIngredientsUsed: string[] = [];
-
-      for (const ri of recipe.recipeIngredients) {
-        if (!ri.ingredient) continue;
-
-        const isBasicIngredient = basicIngredients.some((basic) =>
-          ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
-        );
-
-        if (!isBasicIngredient) {
-          criticalIngredientCount++;
-        }
-
-        if (availableIngredientIds.includes(ri.ingredient.id)) {
-          matchedIngredientCount++;
-          if (ri.ingredient.name) {
-            availableUserIngredientsUsed.push(ri.ingredient.name);
-          }
-        } else if (ri.ingredient) {
-          missingIngredients.push({
-            name: ri.ingredient.name,
-            quantity: ri.quantity,
-            unit: ri.unit,
-          });
-        }
-      }
-
-      // Si no se encontró ningún ingrediente, saltar
-      if (matchedIngredientCount === 0) {
-        continue;
-      }
-
-      // Calcular porcentaje considerando ingredientes críticos
-      let matchPercentage: number;
-      if (criticalIngredientCount > 0) {
-        // Contar cuántos ingredientes críticos tenemos
-        let criticalMatched = 0;
-        for (const ri of recipe.recipeIngredients) {
-          if (!ri.ingredient) continue;
-
-          const isBasicIngredient = basicIngredients.some((basic) =>
-            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
-          );
-
-          if (
-            !isBasicIngredient &&
-            availableIngredientIds.includes(ri.ingredient.id)
-          ) {
-            criticalMatched++;
-          }
-        }
-
-        // Dar más peso a los ingredientes críticos
-        const criticalPercentage = criticalMatched / criticalIngredientCount;
-        const overallPercentage =
-          matchedIngredientCount / recipeTotalIngredients;
-
-        // Promedio ponderado: 70% críticos, 30% general
-        matchPercentage = criticalPercentage * 0.7 + overallPercentage * 0.3;
-      } else {
-        matchPercentage = matchedIngredientCount / recipeTotalIngredients;
-      }
-
-      // Relajar el filtro: aceptar recetas con al menos 1 ingrediente crítico o 50% total
-      const hasAtLeastOneCriticalIngredient = recipe.recipeIngredients.some(
-        (ri) => {
-          if (!ri.ingredient) return false;
-
-          const isBasicIngredient = basicIngredients.some((basic) =>
-            ri.ingredient.name.toLowerCase().includes(basic.toLowerCase()),
-          );
-
-          return (
-            !isBasicIngredient &&
-            availableIngredientIds.includes(ri.ingredient.id)
-          );
-        },
-      );
-
-      if (
-        !hasAtLeastOneCriticalIngredient &&
-        matchPercentage < MINIMUM_INGREDIENT_MATCH_PERCENTAGE
-      ) {
-        continue;
-      }
-
-      // Verificar restricciones dietéticas
-      let passesDietaryRestrictions = true;
-      if (userDietaryRestrictions.length > 0) {
-        for (const ri of recipe.recipeIngredients) {
-          if (
-            ri.ingredient?.tags?.some((tag) =>
-              userDietaryRestrictions.includes(tag),
-            )
-          ) {
-            passesDietaryRestrictions = false;
-            break;
-          }
-        }
-      }
-      if (!passesDietaryRestrictions) {
-        continue;
-      }
-
-      // Verificar herramientas (más flexible - no requerimos todas)
-      let toolPenalty = 0;
-      if (recipe.requiredTools && recipe.requiredTools.length > 0) {
-        const missingTools = recipe.requiredTools.filter(
-          (tool) => !userOwnedToolIds.includes(tool.id),
-        );
-        toolPenalty = missingTools.length * 0.1; // Pequeña penalización por herramienta faltante
-      }
-
-      const finalMatchPercentage = Math.max(0, matchPercentage - toolPenalty);
-
-      suggestedRecipesDetailed.push({
-        recipe,
-        matchPercentage: parseFloat(finalMatchPercentage.toFixed(2)),
-        missingIngredients,
-        availableUserIngredientsUsed,
-      });
-    }
-
-
-    // Ordenar por porcentaje de coincidencia y luego por menos ingredientes faltantes
-    suggestedRecipesDetailed.sort((a, b) => {
-      // Ordenar por tiempo de preparación de menor a mayor
-      return a.recipe.preparationTimeMinutes - b.recipe.preparationTimeMinutes;
-    });
-
-    this.logger.log(
-      `Found ${suggestedRecipesDetailed.length} detailed recipe suggestions for user ID: ${userId}.`,
+    
+    // Delegar al contexto de Strategy
+    return this.recipeSuggestionContext.suggestByInventory(
+      userId, 
+      suggestDto.availableIngredientIds
     );
-
-    return {
-      suggestedRecipes: suggestedRecipesDetailed,
-      totalAvailableIngredients: availableIngredientIds.length,
-      totalFoundRecipes: suggestedRecipesDetailed.length,
-    };
   }
 
   async suggestRecipesByInventory(
@@ -479,10 +255,10 @@ export class RecipesService {
 
   async createUserEditedRecipe(
     userId: string,
-    recipeId: string, // Added recipeId as a parameter
+    recipeId: string,
     editRecipeDto: EditUserRecipeDto,
   ): Promise<Recipe> {
-    this.logger.log(`User ${userId} editing recipe ${recipeId}`); // Use recipeId from parameter
+    this.logger.log(`User ${userId} editing recipe ${recipeId}`);
 
     // Verificar que el usuario existe
     const user = await this.userRepository.findOneBy({ id: userId });
@@ -490,7 +266,7 @@ export class RecipesService {
       throw new NotFoundException(`Usuario con ID "${userId}" no encontrado.`);
     }
 
-    const originalRecipe = await this.findOne(recipeId); // Use recipeId from parameter
+    const originalRecipe = await this.findOne(recipeId);
 
     // Crear una nueva receta basada en la original
     const editedRecipe = this.recipeRepository.create({

@@ -1,6 +1,77 @@
 # Aplicación de Recetas API con NestJS
 
-## ¿Qué es este proyecto?
+## PRINCIPIOS Y PATRONES APLICADOS
+
+### Principio SRP - Single Responsibility Principle
+
+- Se dividio el UsersService en servicios especializados como user-inventoy.service y user-profile.service cada uno con su propia responsabilidad sin tener todo en un mismo servicio como era en el 'user.service'
+
+- Antes:
+class UsersService {
+  create()
+  updateProfile()
+  addIngredient()
+}
+
+- Ahora:
+class UserProfileService {
+  create()
+  updateProfile()
+}
+
+class UserInventoryService {
+  addIngredient()
+  removeIngredient()
+}
+
+### Principio SRP - Dependency Inversion Principle
+
+- Integré  interfaces (puertos out) que definen contratos, entonces ahora los servicios dependen de abstracciones, no de implementaciones concretas.
+
+- Antes:
+class UserProfileService {
+  constructor(
+    @InjectRepository(User) private userRepo: Repository<User>
+  ) {}
+}
+
+- Ahora:
+class UserProfileService {
+  constructor(
+    @Inject('UserRepositoryPort') private userRepo: UserRepositoryPort
+  ) {}
+}
+
+### Patrón Strategy
+
+Se extrajo logica de sugerencias de recetas a estrategias intercambiables, entonces creé un contexto que gestiona las diferentes strategies.
+
+- Antes:
+class RecipesService {
+  suggestRecipes() {
+  }
+}
+
+- Ahora:
+interface RecipeSuggestionStrategy {
+  execute(userId: string): Promise<SuggestRecipesResponseDto>;
+}
+
+class InventoryMatchStrategy implements RecipeSuggestionStrategy {
+  execute(userId: string)
+}
+
+class RecipeSuggestionContextService {
+  suggestByInventory(userId: string) {
+    return this.inventoryStrategy.execute(userId);
+  }
+}
+
+### Patrón Builder
+
+Se creó un builder para construir recetas complejas paso a paso, ademas se encapsula la validación y creación en un objeto reutilizable
+
+## De que es este proyecto?
 
 Una app que permite crear recetas personalizadas de acuerdo a los ingredientes que posea el usuario
 
