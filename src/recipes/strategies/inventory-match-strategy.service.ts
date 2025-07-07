@@ -12,7 +12,7 @@ interface SuggestedRecipeInfo extends Recipe {
   availableUserIngredientsUsed?: string[];
 }
 
-const MINIMUM_INGREDIENT_MATCH_PERCENTAGE = 0.5;
+const MINIMUM_INGREDIENT_MATCH_PERCENTAGE = 0.3;
 
 @Injectable()
 export class InventoryMatchStrategy implements RecipeSuggestionStrategy {

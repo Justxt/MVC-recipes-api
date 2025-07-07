@@ -49,7 +49,6 @@ export class User {
   ownedTools?: Tool[];
 
   @CreateDateColumn({ type: 'timestamp with time zone' })
-  @CreateDateColumn({ type: 'timestamp with time zone' })
   createdAt: Date;
 
   @UpdateDateColumn({ type: 'timestamp with time zone' })
