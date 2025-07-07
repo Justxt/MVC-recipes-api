@@ -354,11 +354,13 @@ export class RecipesService {
 
     if (!userIngredients || userIngredients.length === 0) {
       this.logger.warn(
-        `User with ID "${userId}" has no available ingredients.`,
+        `User with ID "${userId}" has no available ingredients. Returning empty suggestions.`,
       );
-      throw new BadRequestException(
-        'No tienes ingredientes disponibles. Primero selecciona tus ingredientes en /users/ingredients',
-      );
+      return {
+        suggestedRecipes: [],
+        totalAvailableIngredients: 0,
+        totalFoundRecipes: 0,
+      };
     }
 
     const availableIngredientIds = userIngredients.map(

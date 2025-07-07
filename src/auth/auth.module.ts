@@ -17,9 +17,13 @@ import { AuthController } from './auth.controller';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN'),
-        },
+        signOptions: (() => {
+          const raw = configService.get<string>('JWT_EXPIRES_IN');
+          const numericMatch = /^\d+$/.test(raw ?? '') ? parseInt(raw!, 10) : raw;
+          return {
+            expiresIn: numericMatch,
+          } as { expiresIn: string | number };
+        })(),
       }),
       inject: [ConfigService],
     }),
