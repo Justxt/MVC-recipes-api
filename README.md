@@ -2,6 +2,9 @@
 ## De que es este proyecto?
 Una app que permite crear recetas personalizadas de acuerdo a los ingredientes que posea el usuario
 
+### LOOM LINK
+https://www.loom.com/share/20c85e15ceb1401589e2191294139d37?sid=95bbb12f-9431-4394-9041-1bfe1f9938e7
+
 ## PRINCIPIOS Y PATRONES APLICADOS
 ### Link demostracion en YT
 https://youtu.be/1Gl_y6ByAwI
